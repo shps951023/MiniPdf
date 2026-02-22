@@ -52,6 +52,7 @@ public static class ExcelToPdfConverter
     /// <returns>A PdfDocument containing the Excel data.</returns>
     public static PdfDocument Convert(string excelPath, ConversionOptions? options = null)
     {
+        ArgumentException.ThrowIfNullOrEmpty(excelPath);
         using var stream = File.OpenRead(excelPath);
         return Convert(stream, options);
     }
@@ -64,6 +65,7 @@ public static class ExcelToPdfConverter
     /// <returns>A PdfDocument containing the Excel data.</returns>
     public static PdfDocument Convert(Stream excelStream, ConversionOptions? options = null)
     {
+        ArgumentNullException.ThrowIfNull(excelStream);
         options ??= new ConversionOptions();
         var sheets = ExcelReader.ReadSheets(excelStream);
         var doc = new PdfDocument();
@@ -90,6 +92,8 @@ public static class ExcelToPdfConverter
     /// <param name="options">Optional conversion settings.</param>
     public static void ConvertToFile(string excelPath, string pdfPath, ConversionOptions? options = null)
     {
+        ArgumentException.ThrowIfNullOrEmpty(excelPath);
+        ArgumentException.ThrowIfNullOrEmpty(pdfPath);
         var doc = Convert(excelPath, options);
         doc.Save(pdfPath);
     }

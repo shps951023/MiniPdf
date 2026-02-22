@@ -12,6 +12,21 @@ public sealed class PdfDocument
     /// </summary>
     public IReadOnlyList<PdfPage> Pages => _pages;
 
+    /// <summary>Document title.</summary>
+    public string? Title { get; set; }
+
+    /// <summary>Document author.</summary>
+    public string? Author { get; set; }
+
+    /// <summary>Document subject.</summary>
+    public string? Subject { get; set; }
+
+    /// <summary>Document keywords.</summary>
+    public string? Keywords { get; set; }
+
+    /// <summary>Creator application name.</summary>
+    public string? Creator { get; set; }
+
     /// <summary>
     /// Adds a new page to the document.
     /// </summary>
@@ -20,6 +35,8 @@ public sealed class PdfDocument
     /// <returns>The newly created page.</returns>
     public PdfPage AddPage(float width = 612, float height = 792)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(width, 0);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(height, 0);
         var page = new PdfPage(width, height);
         _pages.Add(page);
         return page;
@@ -30,6 +47,7 @@ public sealed class PdfDocument
     /// </summary>
     public void Save(string filePath)
     {
+        ArgumentException.ThrowIfNullOrEmpty(filePath);
         using var stream = File.Create(filePath);
         Save(stream);
     }
@@ -39,6 +57,7 @@ public sealed class PdfDocument
     /// </summary>
     public void Save(Stream stream)
     {
+        ArgumentNullException.ThrowIfNull(stream);
         var writer = new PdfWriter(stream);
         writer.Write(this);
     }

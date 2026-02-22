@@ -405,4 +405,34 @@ public class ExcelToPdfConverterTests
         ms.Position = 0;
         return ms;
     }
+
+    [Fact]
+    public void Convert_NullPath_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => ExcelToPdfConverter.Convert((string)null!));
+    }
+
+    [Fact]
+    public void Convert_EmptyPath_Throws()
+    {
+        Assert.Throws<ArgumentException>(() => ExcelToPdfConverter.Convert(""));
+    }
+
+    [Fact]
+    public void Convert_NullStream_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => ExcelToPdfConverter.Convert((Stream)null!));
+    }
+
+    [Fact]
+    public void ConvertToFile_NullExcelPath_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => ExcelToPdfConverter.ConvertToFile(null!, "out.pdf"));
+    }
+
+    [Fact]
+    public void ConvertToFile_NullPdfPath_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => ExcelToPdfConverter.ConvertToFile("in.xlsx", null!));
+    }
 }

@@ -63,6 +63,21 @@ internal sealed class PdfWriter
         _objectOffsets[3] = Position;
         WriteRaw("3 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj\n");
 
+        // Determine if we need an Info dictionary
+        var hasMetadata = !string.IsNullOrEmpty(document.Title)
+            || !string.IsNullOrEmpty(document.Author)
+            || !string.IsNullOrEmpty(document.Subject)
+            || !string.IsNullOrEmpty(document.Keywords)
+            || !string.IsNullOrEmpty(document.Creator);
+
+        var infoObj = 0;
+        if (hasMetadata)
+        {
+            infoObj = nextObj++;
+            _objectCount = nextObj - 1;
+            _objectOffsets.Add(0);
+        }
+
         // Write each page and its content stream
         for (var i = 0; i < document.Pages.Count; i++)
         {
@@ -89,6 +104,24 @@ internal sealed class PdfWriter
             WriteRaw("endobj\n");
         }
 
+        // Write Info dictionary if metadata is present
+        if (hasMetadata)
+        {
+            _objectOffsets[infoObj] = Position;
+            WriteRaw($"{infoObj} 0 obj\n<< ");
+            if (!string.IsNullOrEmpty(document.Title))
+                WriteRaw($"/Title ({EscapePdfString(document.Title)}) ");
+            if (!string.IsNullOrEmpty(document.Author))
+                WriteRaw($"/Author ({EscapePdfString(document.Author)}) ");
+            if (!string.IsNullOrEmpty(document.Subject))
+                WriteRaw($"/Subject ({EscapePdfString(document.Subject)}) ");
+            if (!string.IsNullOrEmpty(document.Keywords))
+                WriteRaw($"/Keywords ({EscapePdfString(document.Keywords)}) ");
+            if (!string.IsNullOrEmpty(document.Creator))
+                WriteRaw($"/Creator ({EscapePdfString(document.Creator)}) ");
+            WriteRaw(">>\nendobj\n");
+        }
+
         // Write xref table
         var xrefOffset = Position;
         WriteRaw("xref\n");
@@ -101,7 +134,8 @@ internal sealed class PdfWriter
 
         // Write trailer
         WriteRaw("trailer\n");
-        WriteRaw($"<< /Size {_objectCount + 1} /Root 1 0 R >>\n");
+        var trailerExtra = hasMetadata ? $" /Info {infoObj} 0 R" : "";
+        WriteRaw($"<< /Size {_objectCount + 1} /Root 1 0 R{trailerExtra} >>\n");
         WriteRaw("startxref\n");
         WriteRaw($"{xrefOffset}\n");
         WriteRaw("%%EOF\n");
