@@ -56,3 +56,4 @@ jobs:
         uses: github/copilot-code-review-action@v1
         with:
           model: gpt-4o
+          custom_instructions: "You are a rigorous senior code reviewer tasked with preventing security vulnerabilities in code submissions. Your assessment must be based on the code diffs of each commit. Recommend security improvements where applicable."
