@@ -2,6 +2,40 @@
 
 A minimal, zero-dependency .NET library for generating PDF documents from text and Excel (.xlsx) files.
 
+## Project Scope
+
+MiniPdf's purpose is to convert Excel (`.xlsx`) files to PDF and to create PDF documents programmatically from text, using only built-in .NET APIs.
+
+### Supported Features
+
+| Feature | Status |
+|---|---|
+| Text-to-PDF (positioned and auto-wrapped) | ✅ Supported |
+| Excel-to-PDF (`.xlsx` to PDF) | ✅ Supported |
+| Multiple worksheets (each sheet rendered in the PDF) | ✅ Supported |
+| Basic cell formatting (font size, font color) | ✅ Supported |
+| Page setup options (margins, page size, column padding, line spacing) | ✅ Supported |
+| Input as file path or `Stream` | ✅ Supported |
+| Output as file path, `Stream`, or `byte[]` | ✅ Supported |
+| Zero external dependencies (built-in .NET APIs only) | ✅ Supported |
+| Images in Excel cells | ❌ Not supported |
+| Charts in Excel cells | ❌ Not supported |
+| Cell borders and background fills | ❌ Not supported |
+| Bold / italic / underline font styles | ❌ Not supported |
+| Cell merges | ❌ Not supported |
+| Formulas (rendered as their cached value) | ❌ Not supported |
+
+### Target .NET Versions
+
+| Framework | Supported |
+|---|---|
+| .NET 6.0 | ✅ |
+| .NET 7.0 | ✅ |
+| .NET 8.0 | ✅ |
+| .NET 9.0 | ✅ |
+
+> The library targets `net6.0` and `net9.0`. Any .NET version in that range (7, 8) is compatible via the `net6.0` target.
+
 ## Features
 
 - **Text-to-PDF** — Create PDF documents with positioned or auto-wrapped text
@@ -13,7 +47,7 @@ A minimal, zero-dependency .NET library for generating PDF documents from text a
 
 ### Requirements
 
-- .NET 9.0 or later
+- .NET 6.0 or later
 
 ### Build
 
