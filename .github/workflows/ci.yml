@@ -89,7 +89,7 @@ jobs:
             '{
               messages: [
                 { role: "system", content: $instructions },
-                { role: "user", content: ("Review this code diff for security vulnerabilities. Respond with a JSON object: {\"passed\": true/false, \"issues\": [\"issue1\", \"issue2\"]}. Set passed=true if no security issues found, passed=false if there are security concerns.\n\nDiff:\n" + $diff) }
+                { role: "user", content: ("Review this code diff for security vulnerabilities in APPLICATION SOURCE CODE ONLY. Respond ONLY with a JSON object (no markdown, no code blocks): {\"passed\": true/false, \"issues\": [\"description1\", \"description2\"]}. Set passed=true if no security issues found in application code, passed=false only for real security concerns like SQL injection, XSS, path traversal, hardcoded credentials in source code, etc. Do NOT flag CI/CD workflow configuration or documentation changes as issues.\n\nDiff:\n" + $diff) }
               ],
               temperature: 0.1
             }')
