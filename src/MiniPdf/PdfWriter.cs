@@ -121,6 +121,19 @@ internal sealed class PdfWriter
             var y = block.Y.ToString(CultureInfo.InvariantCulture);
             var escapedText = EscapePdfString(block.Text);
 
+            // Set text color if not black
+            if (!block.Color.IsBlack)
+            {
+                var r = block.Color.R.ToString("F3", CultureInfo.InvariantCulture);
+                var g = block.Color.G.ToString("F3", CultureInfo.InvariantCulture);
+                var b = block.Color.B.ToString("F3", CultureInfo.InvariantCulture);
+                sb.Append($"{r} {g} {b} rg\n");
+            }
+            else
+            {
+                sb.Append("0 0 0 rg\n");
+            }
+
             sb.Append($"/F1 {fontSize} Tf\n");
             sb.Append($"{x} {y} Td\n");
             sb.Append($"({escapedText}) Tj\n");

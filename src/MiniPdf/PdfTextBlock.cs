@@ -25,11 +25,17 @@ public sealed class PdfTextBlock
     /// </summary>
     public float FontSize { get; }
 
-    internal PdfTextBlock(string text, float x, float y, float fontSize)
+    /// <summary>
+    /// Text color (default: black).
+    /// </summary>
+    public PdfColor Color { get; }
+
+    internal PdfTextBlock(string text, float x, float y, float fontSize, PdfColor? color = null)
     {
         Text = text;
         X = x;
         Y = y;
         FontSize = fontSize;
+        Color = color ?? PdfColor.Black;
     }
 }

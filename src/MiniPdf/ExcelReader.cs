@@ -22,6 +22,10 @@ internal static class ExcelReader
         // Read shared strings table
         var sharedStrings = ReadSharedStrings(archive);
 
+        // Read styles (font colors)
+        var fontColors = ReadFontColors(archive);
+        var cellXfFontIndices = ReadCellXfFontIndices(archive);
+
         // Read workbook to get sheet names and order
         var sheetInfos = ReadWorkbook(archive);
 
@@ -38,7 +42,7 @@ internal static class ExcelReader
 
             if (entry == null) continue;
 
-            var rows = ReadSheet(entry, sharedStrings);
+            var rows = ReadSheet(entry, sharedStrings, fontColors, cellXfFontIndices);
             sheets.Add(new ExcelSheet(info.Name, rows));
         }
 
@@ -48,7 +52,7 @@ internal static class ExcelReader
             var entry = archive.GetEntry("xl/worksheets/sheet1.xml");
             if (entry != null)
             {
-                var rows = ReadSheet(entry, sharedStrings);
+                var rows = ReadSheet(entry, sharedStrings, fontColors, cellXfFontIndices);
                 sheets.Add(new ExcelSheet("Sheet1", rows));
             }
         }
@@ -97,9 +101,123 @@ internal static class ExcelReader
         return result;
     }
 
-    private static List<List<string>> ReadSheet(ZipArchiveEntry entry, List<string> sharedStrings)
+    private static List<PdfColor?> ReadFontColors(ZipArchive archive)
     {
-        var rows = new List<List<string>>();
+        var colors = new List<PdfColor?>();
+        var entry = archive.GetEntry("xl/styles.xml");
+        if (entry == null) return colors;
+
+        using var stream = entry.Open();
+        var doc = XDocument.Load(stream);
+        var ns = doc.Root?.GetDefaultNamespace() ?? XNamespace.None;
+
+        // Read <fonts> -> <font> elements
+        var fontsElement = doc.Descendants(ns + "fonts").FirstOrDefault();
+        if (fontsElement == null) return colors;
+
+        foreach (var font in fontsElement.Elements(ns + "font"))
+        {
+            var colorEl = font.Element(ns + "color");
+            if (colorEl == null)
+            {
+                colors.Add(null);
+                continue;
+            }
+
+            // Try rgb attribute (ARGB hex, e.g., "FF0000FF")
+            var rgb = colorEl.Attribute("rgb")?.Value;
+            if (!string.IsNullOrEmpty(rgb))
+            {
+                colors.Add(PdfColor.FromHex(rgb));
+                continue;
+            }
+
+            // Try theme attribute (would need theme parsing - skip for now)
+            // Try indexed attribute
+            var indexed = colorEl.Attribute("indexed")?.Value;
+            if (!string.IsNullOrEmpty(indexed) && int.TryParse(indexed, out var idx))
+            {
+                colors.Add(GetIndexedColor(idx));
+                continue;
+            }
+
+            colors.Add(null);
+        }
+
+        return colors;
+    }
+
+    private static List<int> ReadCellXfFontIndices(ZipArchive archive)
+    {
+        var indices = new List<int>();
+        var entry = archive.GetEntry("xl/styles.xml");
+        if (entry == null) return indices;
+
+        using var stream = entry.Open();
+        var doc = XDocument.Load(stream);
+        var ns = doc.Root?.GetDefaultNamespace() ?? XNamespace.None;
+
+        // Read <cellXfs> -> <xf> elements to map style index -> font index
+        var cellXfs = doc.Descendants(ns + "cellXfs").FirstOrDefault();
+        if (cellXfs == null) return indices;
+
+        foreach (var xf in cellXfs.Elements(ns + "xf"))
+        {
+            var fontId = xf.Attribute("fontId")?.Value;
+            indices.Add(int.TryParse(fontId, out var fid) ? fid : 0);
+        }
+
+        return indices;
+    }
+
+    private static PdfColor? GetIndexedColor(int index)
+    {
+        // Standard Excel indexed colors (subset of the 64 built-in colors)
+        return index switch
+        {
+            0 => PdfColor.FromRgb(0, 0, 0),        // Black
+            1 => PdfColor.FromRgb(255, 255, 255),   // White
+            2 => PdfColor.FromRgb(255, 0, 0),       // Red
+            3 => PdfColor.FromRgb(0, 255, 0),       // Green
+            4 => PdfColor.FromRgb(0, 0, 255),       // Blue
+            5 => PdfColor.FromRgb(255, 255, 0),     // Yellow
+            6 => PdfColor.FromRgb(255, 0, 255),     // Magenta
+            7 => PdfColor.FromRgb(0, 255, 255),     // Cyan
+            8 => PdfColor.FromRgb(0, 0, 0),         // Black
+            9 => PdfColor.FromRgb(255, 255, 255),   // White
+            10 => PdfColor.FromRgb(255, 0, 0),      // Red
+            11 => PdfColor.FromRgb(0, 255, 0),      // Green
+            12 => PdfColor.FromRgb(0, 0, 255),      // Blue
+            13 => PdfColor.FromRgb(255, 255, 0),    // Yellow
+            14 => PdfColor.FromRgb(255, 0, 255),    // Magenta
+            15 => PdfColor.FromRgb(0, 255, 255),    // Cyan
+            16 => PdfColor.FromRgb(128, 0, 0),      // Dark Red
+            17 => PdfColor.FromRgb(0, 128, 0),      // Dark Green
+            18 => PdfColor.FromRgb(0, 0, 128),      // Dark Blue
+            19 => PdfColor.FromRgb(128, 128, 0),    // Olive
+            20 => PdfColor.FromRgb(128, 0, 128),    // Purple
+            21 => PdfColor.FromRgb(0, 128, 128),    // Teal
+            22 => PdfColor.FromRgb(192, 192, 192),  // Silver
+            23 => PdfColor.FromRgb(128, 128, 128),  // Grey
+            _ => null
+        };
+    }
+
+    private static PdfColor? ResolveCellColor(int styleIndex, List<PdfColor?> fontColors, List<int> cellXfFontIndices)
+    {
+        if (styleIndex < 0 || styleIndex >= cellXfFontIndices.Count)
+            return null;
+
+        var fontIndex = cellXfFontIndices[styleIndex];
+        if (fontIndex < 0 || fontIndex >= fontColors.Count)
+            return null;
+
+        return fontColors[fontIndex];
+    }
+
+    private static List<List<ExcelCell>> ReadSheet(ZipArchiveEntry entry, List<string> sharedStrings, List<PdfColor?> fontColors, List<int> cellXfFontIndices)
+    {
+        var rows = new List<List<ExcelCell>>();
 
         using var stream = entry.Open();
         var doc = XDocument.Load(stream);
@@ -107,7 +225,7 @@ internal static class ExcelReader
 
         foreach (var row in doc.Descendants(ns + "row"))
         {
-            var cells = new List<string>();
+            var cells = new List<ExcelCell>();
             var lastColIndex = 0;
 
             foreach (var cell in row.Elements(ns + "c"))
@@ -119,27 +237,36 @@ internal static class ExcelReader
                 // Fill empty cells for gaps
                 while (lastColIndex < colIndex)
                 {
-                    cells.Add(string.Empty);
+                    cells.Add(new ExcelCell(string.Empty, null));
                     lastColIndex++;
                 }
 
                 var type = cell.Attribute("t")?.Value;
                 var value = cell.Element(ns + "v")?.Value ?? "";
 
+                // Resolve color from style index
+                var styleAttr = cell.Attribute("s")?.Value;
+                PdfColor? color = null;
+                if (int.TryParse(styleAttr, out var styleIndex))
+                {
+                    color = ResolveCellColor(styleIndex, fontColors, cellXfFontIndices);
+                }
+
+                string text;
                 if (type == "s" && int.TryParse(value, out var idx) && idx < sharedStrings.Count)
                 {
-                    cells.Add(sharedStrings[idx]);
+                    text = sharedStrings[idx];
                 }
                 else if (type == "inlineStr")
                 {
-                    var inlineText = string.Concat(cell.Descendants(ns + "t").Select(t => t.Value));
-                    cells.Add(inlineText);
+                    text = string.Concat(cell.Descendants(ns + "t").Select(t => t.Value));
                 }
                 else
                 {
-                    cells.Add(value);
+                    text = value;
                 }
 
+                cells.Add(new ExcelCell(text, color));
                 lastColIndex = colIndex + 1;
             }
 
@@ -170,14 +297,19 @@ internal static class ExcelReader
 }
 
 /// <summary>
+/// Represents a cell read from an Excel file.
+/// </summary>
+internal sealed record ExcelCell(string Text, PdfColor? Color);
+
+/// <summary>
 /// Represents a sheet read from an Excel file.
 /// </summary>
 internal sealed class ExcelSheet
 {
     public string Name { get; }
-    public List<List<string>> Rows { get; }
+    public List<List<ExcelCell>> Rows { get; }
 
-    internal ExcelSheet(string name, List<List<string>> rows)
+    internal ExcelSheet(string name, List<List<ExcelCell>> rows)
     {
         Name = name;
         Rows = rows;

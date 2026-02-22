@@ -35,10 +35,11 @@ public sealed class PdfPage
     /// <param name="x">X position in points from the left edge.</param>
     /// <param name="y">Y position in points from the bottom edge.</param>
     /// <param name="fontSize">Font size in points (default: 12).</param>
+    /// <param name="color">Text color (default: black).</param>
     /// <returns>The current page for chaining.</returns>
-    public PdfPage AddText(string text, float x, float y, float fontSize = 12)
+    public PdfPage AddText(string text, float x, float y, float fontSize = 12, PdfColor? color = null)
     {
-        _textBlocks.Add(new PdfTextBlock(text, x, y, fontSize));
+        _textBlocks.Add(new PdfTextBlock(text, x, y, fontSize, color));
         return this;
     }
 
@@ -52,8 +53,9 @@ public sealed class PdfPage
     /// <param name="maxWidth">Maximum width for text wrapping.</param>
     /// <param name="fontSize">Font size in points (default: 12).</param>
     /// <param name="lineSpacing">Line spacing multiplier (default: 1.2).</param>
+    /// <param name="color">Text color (default: black).</param>
     /// <returns>The current page for chaining.</returns>
-    public PdfPage AddTextWrapped(string text, float x, float y, float maxWidth, float fontSize = 12, float lineSpacing = 1.2f)
+    public PdfPage AddTextWrapped(string text, float x, float y, float maxWidth, float fontSize = 12, float lineSpacing = 1.2f, PdfColor? color = null)
     {
         if (string.IsNullOrEmpty(text))
             return this;
@@ -70,7 +72,7 @@ public sealed class PdfPage
         foreach (var line in lines)
         {
             // PDF y-coordinate is from bottom, so subtract to go down
-            AddText(line, x, currentY, fontSize);
+            AddText(line, x, currentY, fontSize, color);
             currentY -= lineHeight;
         }
 

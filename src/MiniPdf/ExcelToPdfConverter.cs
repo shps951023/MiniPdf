@@ -137,7 +137,8 @@ public static class ExcelToPdfConverter
             var x = options.MarginLeft;
             for (var col = 0; col < maxCols && col < row.Count; col++)
             {
-                var cellText = row[col];
+                var cell = row[col];
+                var cellText = cell.Text;
                 if (!string.IsNullOrEmpty(cellText))
                 {
                     // Truncate text if it exceeds column width
@@ -147,7 +148,7 @@ public static class ExcelToPdfConverter
                         cellText = cellText[..(maxChars - 3)] + "...";
                     }
 
-                    currentPage!.AddText(cellText, x, currentY, options.FontSize);
+                    currentPage!.AddText(cellText, x, currentY, options.FontSize, cell.Color);
                 }
                 x += colWidths[col] + options.ColumnPadding;
             }
@@ -165,7 +166,7 @@ public static class ExcelToPdfConverter
         {
             for (var col = 0; col < row.Count && col < maxCols; col++)
             {
-                colMaxLengths[col] = Math.Max(colMaxLengths[col], row[col].Length);
+                colMaxLengths[col] = Math.Max(colMaxLengths[col], row[col].Text.Length);
             }
         }
 
