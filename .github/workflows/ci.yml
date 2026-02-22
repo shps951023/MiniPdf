@@ -112,18 +112,14 @@ jobs:
           echo "$CONTENT"
           echo "================================="
           
-          # Extract JSON from response (handle markdown code blocks)
-          JSON_RESULT=$(echo "$CONTENT" | sed -n 's/.*\({.*}\).*/\1/p' | head -1)
-          if [ -z "$JSON_RESULT" ]; then
-            JSON_RESULT="$CONTENT"
-          fi
-          
-          PASSED=$(echo "$JSON_RESULT" | jq -r '.passed // empty' 2>/dev/null)
+          # Parse JSON from response: strip markdown code blocks, then parse with jq
+          CLEAN_CONTENT=$(echo "$CONTENT" | sed '/^```/d')
+          PASSED=$(echo "$CLEAN_CONTENT" | jq -r '.passed // empty' 2>/dev/null)
           
           if [ "$PASSED" = "false" ]; then
             echo ""
             echo "::error::AI Security Review FAILED - security issues detected"
-            echo "$JSON_RESULT" | jq -r '.issues[]? // empty' 2>/dev/null | while read -r issue; do
+            echo "$CLEAN_CONTENT" | jq -r '.issues[]? // empty' 2>/dev/null | while read -r issue; do
               echo "::warning::$issue"
             done
             exit 1
@@ -131,7 +127,8 @@ jobs:
             echo ""
             echo "✅ AI Security Review PASSED - no security issues found"
           else
-            echo "::warning::Could not parse AI review result, treating as pass"
+            echo "::warning::Could not parse AI review result, treating as FAIL for safety"
+            exit 1
           fi
 
       - name: Skip notice
