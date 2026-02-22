@@ -66,7 +66,9 @@ jobs:
       - name: AI Security Review
         if: steps.diff.outputs.skip != 'true'
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
         run: |
           DIFF=$(cat /tmp/pr_diff.txt)
           
@@ -77,12 +79,14 @@ jobs:
           
           INSTRUCTIONS=$(cat .github/copilot-code-review.md 2>/dev/null || echo "Review for security issues.")
           
+          API_VERSION="2025-01-01-preview"
+          URL="${AZURE_OPENAI_ENDPOINT%/}/openai/deployments/${AZURE_OPENAI_DEPLOYMENT}/chat/completions?api-version=${API_VERSION}"
+          
           # Build JSON payload safely using jq
           PAYLOAD=$(jq -n \
             --arg instructions "$INSTRUCTIONS" \
             --arg diff "$DIFF" \
             '{
-              model: "gpt-4o-mini",
               messages: [
                 { role: "system", content: $instructions },
                 { role: "user", content: ("Review this code diff for security vulnerabilities. Respond with a JSON object: {\"passed\": true/false, \"issues\": [\"issue1\", \"issue2\"]}. Set passed=true if no security issues found, passed=false if there are security concerns.\n\nDiff:\n" + $diff) }
@@ -90,9 +94,9 @@ jobs:
               temperature: 0.1
             }')
           
-          RESPONSE=$(curl -s https://api.openai.com/v1/chat/completions \
+          RESPONSE=$(curl -s "$URL" \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -H "api-key: $AZURE_OPENAI_API_KEY" \
             -d "$PAYLOAD")
           
           # Extract content
