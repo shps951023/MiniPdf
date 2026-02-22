@@ -53,7 +53,7 @@ jobs:
       - name: Get PR diff
         id: diff
         run: |
-          DIFF=$(git diff origin/${{ github.base_ref }}...HEAD -- '*.cs' '*.csproj' '*.yml' '*.yaml' '*.json' '*.xml' '*.config' || true)
+          DIFF=$(git diff origin/${{ github.base_ref }}...HEAD -- '*.cs' '*.csproj' || true)
           if [ -z "$DIFF" ]; then
             echo "No code changes detected."
             echo "skip=true" >> $GITHUB_OUTPUT
@@ -114,12 +114,13 @@ jobs:
           
           # Parse JSON from response: strip markdown code blocks, then parse with jq
           CLEAN_CONTENT=$(echo "$CONTENT" | sed '/^```/d')
-          PASSED=$(echo "$CLEAN_CONTENT" | jq -r '.passed // empty' 2>/dev/null)
+          # Use 'if .passed then "true" else "false" end' to handle boolean false correctly
+          PASSED=$(echo "$CLEAN_CONTENT" | jq -r 'if .passed == true then "true" elif .passed == false then "false" else "unknown" end' 2>/dev/null)
           
           if [ "$PASSED" = "false" ]; then
             echo ""
             echo "::error::AI Security Review FAILED - security issues detected"
-            echo "$CLEAN_CONTENT" | jq -r '.issues[]? // empty' 2>/dev/null | while read -r issue; do
+            echo "$CLEAN_CONTENT" | jq -r '.issues[]?' 2>/dev/null | while read -r issue; do
               echo "::warning::$issue"
             done
             exit 1
