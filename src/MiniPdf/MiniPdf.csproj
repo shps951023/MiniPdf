@@ -9,9 +9,18 @@
     <!-- NuGet Package Metadata -->
     <PackageId>MiniPdf</PackageId>
     <Version>0.1.0</Version>
-    <Description>A minimal, zero-dependency .NET library for generating PDF documents from text and Excel files.</Description>
-    <PackageTags>pdf;excel;xlsx;converter;text</PackageTags>
+    <Authors>shps951023</Authors>
+    <Description>A minimal, zero-dependency .NET library for generating PDF documents from text and Excel (.xlsx) files. Supports text-to-PDF with positioning and wrapping, Excel-to-PDF with automatic column layout and pagination, text color, and PDF metadata.</Description>
+    <PackageTags>pdf;excel;xlsx;converter;text;document;generation</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/shps951023/MiniPdf</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/shps951023/MiniPdf</PackageProjectUrl>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
 
 </Project>
