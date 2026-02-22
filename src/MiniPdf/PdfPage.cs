@@ -39,6 +39,7 @@ public sealed class PdfPage
     /// <returns>The current page for chaining.</returns>
     public PdfPage AddText(string text, float x, float y, float fontSize = 12, PdfColor? color = null)
     {
+        ArgumentNullException.ThrowIfNull(text);
         _textBlocks.Add(new PdfTextBlock(text, x, y, fontSize, color));
         return this;
     }
@@ -57,6 +58,8 @@ public sealed class PdfPage
     /// <returns>The current page for chaining.</returns>
     public PdfPage AddTextWrapped(string text, float x, float y, float maxWidth, float fontSize = 12, float lineSpacing = 1.2f, PdfColor? color = null)
     {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(maxWidth, 0);
         if (string.IsNullOrEmpty(text))
             return this;
 
