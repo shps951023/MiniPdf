@@ -9,6 +9,7 @@
     <!-- NuGet Package Metadata -->
     <PackageId>MiniPdf</PackageId>
     <Version>0.1.0</Version>
+    <PackageVersion>0.1.0</PackageVersion>
     <Authors>shps951023</Authors>
     <Description>A minimal, zero-dependency .NET library for generating PDF documents from text and Excel files.</Description>
     <PackageTags>pdf;excel;xlsx;converter;text;minipdf</PackageTags>
