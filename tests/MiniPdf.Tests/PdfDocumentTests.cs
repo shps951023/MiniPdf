@@ -159,4 +159,126 @@ public class PdfDocumentTests
         Assert.Contains("%%EOF", content);
         Assert.Contains("/Type /Page", content);
     }
+
+    [Fact]
+    public void AddPage_ZeroWidth_Throws()
+    {
+        var doc = new PdfDocument();
+        Assert.Throws<ArgumentOutOfRangeException>(() => doc.AddPage(width: 0, height: 100));
+    }
+
+    [Fact]
+    public void AddPage_NegativeHeight_Throws()
+    {
+        var doc = new PdfDocument();
+        Assert.Throws<ArgumentOutOfRangeException>(() => doc.AddPage(width: 100, height: -1));
+    }
+
+    [Fact]
+    public void Save_NullFilePath_Throws()
+    {
+        var doc = new PdfDocument();
+        doc.AddPage();
+        Assert.Throws<ArgumentNullException>(() => doc.Save((string)null!));
+    }
+
+    [Fact]
+    public void Save_EmptyFilePath_Throws()
+    {
+        var doc = new PdfDocument();
+        doc.AddPage();
+        Assert.Throws<ArgumentException>(() => doc.Save(""));
+    }
+
+    [Fact]
+    public void Save_NullStream_Throws()
+    {
+        var doc = new PdfDocument();
+        doc.AddPage();
+        Assert.Throws<ArgumentNullException>(() => doc.Save((Stream)null!));
+    }
+
+    [Fact]
+    public void AddText_NullText_Throws()
+    {
+        var doc = new PdfDocument();
+        var page = doc.AddPage();
+        Assert.Throws<ArgumentNullException>(() => page.AddText(null!, 0, 0));
+    }
+
+    [Fact]
+    public void AddTextWrapped_NullText_Throws()
+    {
+        var doc = new PdfDocument();
+        var page = doc.AddPage();
+        Assert.Throws<ArgumentNullException>(() => page.AddTextWrapped(null!, 0, 0, 100));
+    }
+
+    [Fact]
+    public void AddTextWrapped_ZeroMaxWidth_Throws()
+    {
+        var doc = new PdfDocument();
+        var page = doc.AddPage();
+        Assert.Throws<ArgumentOutOfRangeException>(() => page.AddTextWrapped("text", 0, 0, 0));
+    }
+
+    [Fact]
+    public void Metadata_Title_IncludedInPdf()
+    {
+        var doc = new PdfDocument();
+        doc.Title = "Test Title";
+        doc.AddPage();
+
+        var bytes = doc.ToArray();
+        var content = System.Text.Encoding.ASCII.GetString(bytes);
+
+        Assert.Contains("/Title (Test Title)", content);
+    }
+
+    [Fact]
+    public void Metadata_AllProperties_IncludedInPdf()
+    {
+        var doc = new PdfDocument();
+        doc.Title = "My Title";
+        doc.Author = "My Author";
+        doc.Subject = "My Subject";
+        doc.Keywords = "My Keywords";
+        doc.Creator = "My Creator";
+        doc.AddPage();
+
+        var bytes = doc.ToArray();
+        var content = System.Text.Encoding.ASCII.GetString(bytes);
+
+        Assert.Contains("/Title (My Title)", content);
+        Assert.Contains("/Author (My Author)", content);
+        Assert.Contains("/Subject (My Subject)", content);
+        Assert.Contains("/Keywords (My Keywords)", content);
+        Assert.Contains("/Creator (My Creator)", content);
+        Assert.Contains("/Info", content);
+    }
+
+    [Fact]
+    public void Metadata_None_NoInfoDictionary()
+    {
+        var doc = new PdfDocument();
+        doc.AddPage();
+
+        var bytes = doc.ToArray();
+        var content = System.Text.Encoding.ASCII.GetString(bytes);
+
+        Assert.DoesNotContain("/Info", content);
+    }
+
+    [Fact]
+    public void Metadata_SpecialChars_Escaped()
+    {
+        var doc = new PdfDocument();
+        doc.Title = "Hello (World)";
+        doc.AddPage();
+
+        var bytes = doc.ToArray();
+        var content = System.Text.Encoding.ASCII.GetString(bytes);
+
+        Assert.Contains("/Title (Hello \\(World\\))", content);
+    }
 }
