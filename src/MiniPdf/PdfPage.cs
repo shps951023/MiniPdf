@@ -60,7 +60,7 @@ public sealed class PdfPage
     {
         ArgumentNullException.ThrowIfNull(text);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(maxWidth, 0);
-        if (string.IsNullOrEmpty(text))
+        if (text.Length == 0)
             return this;
 
         var lineHeight = fontSize * lineSpacing;
