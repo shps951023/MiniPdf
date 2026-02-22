@@ -13,6 +13,12 @@ A minimal, zero-dependency .NET library for generating PDF documents from text a
 
 ## Getting Started
 
+### Install via NuGet
+
+```bash
+dotnet add package MiniPdf
+```
+
 ### Requirements
 
 - .NET 9.0 or later
