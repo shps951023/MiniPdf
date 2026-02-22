@@ -2,6 +2,8 @@
 
 A minimal, zero-dependency .NET library for generating PDF documents from text and Excel (.xlsx) files.
 
+> **Security**: All PRs are automatically reviewed by Copilot AI and Azure AI security scan for vulnerabilities.
+
 ## Features
 
 - **Text-to-PDF** — Create PDF documents with positioned or auto-wrapped text
