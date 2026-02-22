@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   build:
@@ -38,30 +37,3 @@ jobs:
         with:
           name: test-results
           path: '**/test-results.trx'
-
-  ai-pr-review:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    needs: build
-
-    permissions:
-      contents: read
-      pull-requests: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: AI PR Review
-        uses: github/copilot-code-review-action@v1
-        with:
-          model: gpt-4o
-          custom_instructions: |
-            You are a rigorous senior code reviewer tasked with preventing security vulnerabilities in code submissions.
-            Your assessment must be based on the code diffs of each commit.
-            - Language: English
-            - Focus on .NET security policy and best practices
-            - Flag any potential SQL injection, XSS, path traversal, insecure deserialization, or other OWASP Top 10 risks
-            - Check for hardcoded secrets, credentials, or sensitive data exposure
-            - Verify proper input validation and output encoding
-            - Ensure secure file I/O patterns (no arbitrary file access)
