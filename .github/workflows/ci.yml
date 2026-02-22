@@ -32,6 +32,9 @@ jobs:
       - name: Test
         run: dotnet test --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
 
+      - name: Pack (verify NuGet package)
+        run: dotnet pack src/MiniPdf/MiniPdf.csproj --no-build --configuration Release --output ./nupkg
+
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
