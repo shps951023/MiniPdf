@@ -42,7 +42,7 @@ foreach (var xlsxPath in xlsxFiles)
 
     try
     {
-        ExcelToPdfConverter.ConvertToFile(xlsxPath, pdfPath);
+        MiniPdf.ConvertToPdf(xlsxPath, pdfPath);
         var pdfSize = new FileInfo(pdfPath).Length;
         Console.WriteLine($"  OK  {name}.pdf ({pdfSize / 1024.0:F1} KB)");
         passed++;

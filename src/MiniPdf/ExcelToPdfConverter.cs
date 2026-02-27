@@ -6,12 +6,12 @@ namespace MiniPdf;
 /// Converts Excel (.xlsx) files to PDF documents.
 /// Renders cell text in a simple table layout using the built-in Helvetica font.
 /// </summary>
-public static class ExcelToPdfConverter
+internal static class ExcelToPdfConverter
 {
     /// <summary>
     /// Options for controlling Excel-to-PDF conversion.
     /// </summary>
-    public sealed class ConversionOptions
+    internal sealed class ConversionOptions
     {
         /// <summary>Font size in points (default: 10).</summary>
         public float FontSize { get; set; } = 10;
@@ -50,7 +50,7 @@ public static class ExcelToPdfConverter
     /// <param name="excelPath">Path to the .xlsx file.</param>
     /// <param name="options">Optional conversion settings.</param>
     /// <returns>A PdfDocument containing the Excel data.</returns>
-    public static PdfDocument Convert(string excelPath, ConversionOptions? options = null)
+    internal static PdfDocument Convert(string excelPath, ConversionOptions? options = null)
     {
         using var stream = File.OpenRead(excelPath);
         return Convert(stream, options);
@@ -62,7 +62,7 @@ public static class ExcelToPdfConverter
     /// <param name="excelStream">Stream containing .xlsx data.</param>
     /// <param name="options">Optional conversion settings.</param>
     /// <returns>A PdfDocument containing the Excel data.</returns>
-    public static PdfDocument Convert(Stream excelStream, ConversionOptions? options = null)
+    internal static PdfDocument Convert(Stream excelStream, ConversionOptions? options = null)
     {
         options ??= new ConversionOptions();
         var sheets = ExcelReader.ReadSheets(excelStream);
@@ -88,7 +88,7 @@ public static class ExcelToPdfConverter
     /// <param name="excelPath">Path to the .xlsx file.</param>
     /// <param name="pdfPath">Path for the output .pdf file.</param>
     /// <param name="options">Optional conversion settings.</param>
-    public static void ConvertToFile(string excelPath, string pdfPath, ConversionOptions? options = null)
+    internal static void ConvertToFile(string excelPath, string pdfPath, ConversionOptions? options = null)
     {
         var doc = Convert(excelPath, options);
         doc.Save(pdfPath);

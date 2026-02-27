@@ -3,7 +3,7 @@ namespace MiniPdf;
 /// <summary>
 /// Represents a PDF document that can contain pages with text content.
 /// </summary>
-public sealed class PdfDocument
+internal sealed class PdfDocument
 {
     private readonly List<PdfPage> _pages = [];
 

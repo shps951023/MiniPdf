@@ -3,7 +3,7 @@ namespace MiniPdf;
 /// <summary>
 /// Represents a single page in a PDF document.
 /// </summary>
-public sealed class PdfPage
+internal sealed class PdfPage
 {
     private readonly List<PdfTextBlock> _textBlocks = [];
 

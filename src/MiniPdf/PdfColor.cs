@@ -4,7 +4,7 @@ namespace MiniPdf;
 /// Represents an RGB color for PDF text rendering.
 /// Component values range from 0.0 (none) to 1.0 (full intensity).
 /// </summary>
-public readonly struct PdfColor : IEquatable<PdfColor>
+internal readonly struct PdfColor : IEquatable<PdfColor>
 {
     /// <summary>Red component (0.0–1.0).</summary>
     public float R { get; }

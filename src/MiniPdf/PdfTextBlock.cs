@@ -3,7 +3,7 @@ namespace MiniPdf;
 /// <summary>
 /// Represents a text block to be rendered on a PDF page.
 /// </summary>
-public sealed class PdfTextBlock
+internal sealed class PdfTextBlock
 {
     /// <summary>
     /// The text content.
