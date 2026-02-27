@@ -42,6 +42,17 @@ internal static class ExcelToPdfConverter
 
         /// <summary>Whether to include sheet name as a header (default: true).</summary>
         public bool IncludeSheetName { get; set; } = true;
+
+        /// <summary>
+        /// Zero-based indices of the sheets to include. When null or empty, all sheets are included.
+        /// </summary>
+        public IReadOnlyList<int>? SheetIndices { get; set; }
+
+        /// <summary>
+        /// Names of the sheets to include (case-insensitive). When null or empty, all sheets are included.
+        /// Ignored if <see cref="SheetIndices"/> is also specified.
+        /// </summary>
+        public IReadOnlyList<string>? SheetNames { get; set; }
     }
 
     /// <summary>
@@ -68,7 +79,20 @@ internal static class ExcelToPdfConverter
         var sheets = ExcelReader.ReadSheets(excelStream);
         var doc = new PdfDocument();
 
-        foreach (var sheet in sheets)
+        // Filter sheets by index or name if specified
+        IEnumerable<ExcelSheet> sheetsToRender = sheets;
+        if (options.SheetIndices is { Count: > 0 })
+        {
+            var indexSet = new HashSet<int>(options.SheetIndices);
+            sheetsToRender = sheets.Where((_, i) => indexSet.Contains(i));
+        }
+        else if (options.SheetNames is { Count: > 0 })
+        {
+            var nameSet = new HashSet<string>(options.SheetNames, StringComparer.OrdinalIgnoreCase);
+            sheetsToRender = sheets.Where(s => nameSet.Contains(s.Name));
+        }
+
+        foreach (var sheet in sheetsToRender)
         {
             RenderSheet(doc, sheet, options);
         }

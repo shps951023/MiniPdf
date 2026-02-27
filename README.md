@@ -86,6 +86,27 @@ var doc = ExcelToPdfConverter.Convert("data.xlsx", options);
 doc.Save("data.pdf");
 ```
 
+### Multi-Sheet Handling
+
+By default all sheets are converted. Use `SheetIndices` (zero-based) or `SheetNames` (case-insensitive) to select a subset:
+
+```csharp
+// Convert only the first and third sheet (by index)
+var options = new ExcelToPdfConverter.ConversionOptions
+{
+    SheetIndices = new[] { 0, 2 },
+};
+
+// Convert only sheets named "Sales" and "Summary" (case-insensitive)
+var options2 = new ExcelToPdfConverter.ConversionOptions
+{
+    SheetNames = new[] { "Sales", "Summary" },
+};
+```
+
+When both `SheetIndices` and `SheetNames` are specified, `SheetIndices` takes precedence.
+```
+
 ### Save to Stream or Byte Array
 
 ```csharp
