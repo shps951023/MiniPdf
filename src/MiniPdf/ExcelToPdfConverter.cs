@@ -31,8 +31,8 @@ internal static class ExcelToPdfConverter
         /// <summary>Padding between columns in points (default: 20).</summary>
         public float ColumnPadding { get; set; } = 20;
 
-        /// <summary>Line spacing multiplier (default: 1.4).</summary>
-        public float LineSpacing { get; set; } = 1.4f;
+        /// <summary>Line spacing multiplier (default: 1.6).</summary>
+        public float LineSpacing { get; set; } = 1.6f;
 
         /// <summary>Page width in points (default: 612 = US Letter).</summary>
         public float PageWidth { get; set; } = 612;
@@ -40,8 +40,8 @@ internal static class ExcelToPdfConverter
         /// <summary>Page height in points (default: 792 = US Letter).</summary>
         public float PageHeight { get; set; } = 792;
 
-        /// <summary>Whether to include sheet name as a header (default: true).</summary>
-        public bool IncludeSheetName { get; set; } = true;
+        /// <summary>Whether to include sheet name as a header (default: false).</summary>
+        public bool IncludeSheetName { get; set; } = false;
     }
 
     /// <summary>
@@ -118,19 +118,19 @@ internal static class ExcelToPdfConverter
             columnPadding = Math.Max(4f, options.ColumnPadding * 6f / maxCols);
         }
 
-        var colWidths = CalculateColumnWidths(sheet, maxCols, usableWidth, options, columnPadding);
+        // Calculate natural (unscaled) column widths to decide on grouping
+        var naturalWidths = CalculateNaturalColumnWidths(sheet, maxCols, usableWidth, options);
+        var totalNatural = naturalWidths.Sum() + columnPadding * (maxCols - 1);
 
-        // Check if all columns fit on one page, or need to be split into groups
-        var totalTableWidth = colWidths.Sum() + columnPadding * (maxCols - 1);
-
-        if (totalTableWidth > usableWidth * 1.1f && maxCols > 3)
+        if (totalNatural > usableWidth && maxCols > 1)
         {
             // Columns don't fit — split into groups that fit on a page each
-            RenderSheetColumnGroups(doc, sheet, options, pageWidth, pageHeight, usableWidth, columnPadding, avgCharWidth);
+            RenderSheetColumnGroups(doc, sheet, options, pageWidth, pageHeight, usableWidth, columnPadding, avgCharWidth, naturalWidths);
         }
         else
         {
-            // Single group — render normally
+            // Single group — scale to fit if needed
+            var colWidths = ScaleColumnWidths(naturalWidths, usableWidth, columnPadding, avgCharWidth);
             RenderSheetRows(doc, sheet, options, pageWidth, pageHeight, Enumerable.Range(0, maxCols).ToArray(), columnPadding, colWidths, avgCharWidth);
         }
     }
@@ -139,29 +139,11 @@ internal static class ExcelToPdfConverter
     /// Split columns into groups that fit within usable width, render each group on separate pages.
     /// </summary>
     private static void RenderSheetColumnGroups(PdfDocument doc, ExcelSheet sheet, ConversionOptions options,
-        float pageWidth, float pageHeight, float usableWidth, float columnPadding, float avgCharWidth)
+        float pageWidth, float pageHeight, float usableWidth, float columnPadding, float avgCharWidth, float[] naturalWidths)
     {
-        var maxCols = sheet.Rows.Max(r => r.Count);
+        var maxCols = naturalWidths.Length;
 
-        // Calculate individual column widths without scaling
-        var colMaxLengths = new int[maxCols];
-        foreach (var row in sheet.Rows)
-        {
-            for (var col = 0; col < row.Count && col < maxCols; col++)
-            {
-                colMaxLengths[col] = Math.Max(colMaxLengths[col], row[col].Text.Length);
-            }
-        }
-
-        // Cap each column width to MaxColumnWidth
-        var maxColWidth = usableWidth * 0.6f; // No single column takes more than 60% of page
-        var naturalWidths = new float[maxCols];
-        for (var i = 0; i < maxCols; i++)
-        {
-            naturalWidths[i] = Math.Min(Math.Max(colMaxLengths[i], 3) * avgCharWidth, maxColWidth);
-        }
-
-        // Group columns to fit within usable width
+        // Group columns to fit within usable width using pre-calculated natural widths
         var groups = new List<int[]>();
         var currentGroup = new List<int>();
         var currentWidth = 0f;
@@ -187,7 +169,7 @@ internal static class ExcelToPdfConverter
         // Render each column group
         foreach (var group in groups)
         {
-            // Calculate column widths for this group
+            // Extract column widths for this group
             var groupWidths = new float[group.Length];
             for (var i = 0; i < group.Length; i++)
             {
@@ -370,7 +352,11 @@ internal static class ExcelToPdfConverter
         return false;
     }
 
-    private static float[] CalculateColumnWidths(ExcelSheet sheet, int maxCols, float usableWidth, ConversionOptions options, float columnPadding)
+    /// <summary>
+    /// Calculates natural (unscaled) column widths with min/max bounds.
+    /// These widths are used for the grouping decision.
+    /// </summary>
+    private static float[] CalculateNaturalColumnWidths(ExcelSheet sheet, int maxCols, float usableWidth, ConversionOptions options)
     {
         var avgCharWidth = options.FontSize * 0.5f;
         var colMaxLengths = new int[maxCols];
@@ -383,37 +369,45 @@ internal static class ExcelToPdfConverter
             }
         }
 
-        // Cap max column width to prevent very long text from consuming all width.
-        // Only apply aggressive cap when text is truly long (>80 chars).
-        // For normal text, allow up to 60% of usable width.
-        var maxColWidth = usableWidth * 0.6f;
+        // Max column width: relax for sheets with few columns
+        var maxColWidth = maxCols <= 2 ? usableWidth * 0.95f : usableWidth * 0.6f;
 
-        // Calculate natural widths with cap
-        var naturalWidths = new float[maxCols];
+        // Min column width: enforce readability (wider for many-column sheets)
+        var minColWidth = maxCols > 12 ? avgCharWidth * 9 : avgCharWidth * 4;
+
+        var widths = new float[maxCols];
         for (var i = 0; i < maxCols; i++)
         {
-            var naturalWidth = Math.Max(colMaxLengths[i], 3) * avgCharWidth;
-            naturalWidths[i] = Math.Min(naturalWidth, maxColWidth);
+            // Add 2 chars of internal buffer for readability and text extraction spacing
+            var natural = (Math.Max(colMaxLengths[i], 3) + 2) * avgCharWidth;
+            widths[i] = Math.Clamp(natural, minColWidth, maxColWidth);
         }
+
+        return widths;
+    }
+
+    /// <summary>
+    /// Scales column widths to fit within usable width if they exceed it.
+    /// </summary>
+    private static float[] ScaleColumnWidths(float[] naturalWidths, float usableWidth, float columnPadding, float avgCharWidth)
+    {
+        var maxCols = naturalWidths.Length;
         var totalPadding = columnPadding * (maxCols - 1);
-        var totalNatural = naturalWidths.Sum() + totalPadding;
+        var total = naturalWidths.Sum() + totalPadding;
 
-        // Scale down if exceeding usable width
-        if (totalNatural > usableWidth)
+        if (total <= usableWidth)
+            return (float[])naturalWidths.Clone();
+
+        var result = (float[])naturalWidths.Clone();
+        var available = usableWidth - totalPadding;
+        if (available <= 0)
+            available = usableWidth * 0.9f;
+        var scale = available / naturalWidths.Sum();
+        for (var i = 0; i < result.Length; i++)
         {
-            var availableForColumns = usableWidth - totalPadding;
-            if (availableForColumns <= 0)
-            {
-                // Extreme case: even padding alone exceeds width; distribute evenly
-                availableForColumns = usableWidth * 0.9f;
-            }
-            var scale = availableForColumns / naturalWidths.Sum();
-            for (var i = 0; i < naturalWidths.Length; i++)
-            {
-                naturalWidths[i] = Math.Max(naturalWidths[i] * scale, avgCharWidth);
-            }
+            result[i] = Math.Max(result[i] * scale, avgCharWidth);
         }
 
-        return naturalWidths;
+        return result;
     }
 }

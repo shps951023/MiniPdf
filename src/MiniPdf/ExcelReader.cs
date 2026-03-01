@@ -283,6 +283,19 @@ internal static class ExcelReader
                 else
                 {
                     text = value;
+
+                    // Normalize floating-point representation for numeric cells
+                    if (string.IsNullOrEmpty(type) || type == "n")
+                    {
+                        if (!string.IsNullOrEmpty(text) &&
+                            double.TryParse(text, System.Globalization.NumberStyles.Any,
+                                System.Globalization.CultureInfo.InvariantCulture, out var numVal))
+                        {
+                            text = numVal.ToString("G15", System.Globalization.CultureInfo.InvariantCulture);
+                        }
+                    }
+
+
                 }
 
                 cells.Add(new ExcelCell(text, color));

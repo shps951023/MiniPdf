@@ -33,11 +33,26 @@ except ImportError:
 
 
 def extract_text_pymupdf(pdf_path: str) -> list[str]:
-    """Extract text from each page using PyMuPDF."""
+    """Extract text from each page using PyMuPDF.
+    Uses dict extraction for individual text spans, avoiding
+    false merging of adjacent table cells on the same line."""
     pages = []
     doc = fitz.open(pdf_path)
     for page in doc:
-        pages.append(page.get_text("text"))
+        data = page.get_text("dict", sort=True)
+        spans = []
+        for block in data.get("blocks", []):
+            if block.get("type", 0) != 0:
+                continue
+            for line in block.get("lines", []):
+                for span in line.get("spans", []):
+                    text = span.get("text", "").strip()
+                    if text:
+                        spans.append((round(span["bbox"][1], 1), span["bbox"][0], text))
+        # Sort by Y then X position
+        spans.sort()
+        page_text = "\n".join(s[2] for s in spans)
+        pages.append(page_text)
     doc.close()
     return pages
 

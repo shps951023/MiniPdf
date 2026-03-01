@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MiniPdf vs LibreOffice — PDF 視覺對比報告</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --text: #e6edf3; --text2: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --yellow: #d29922; --red: #f85149;
+    --card-radius: 12px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+         background: var(--bg); color: var(--text); line-height: 1.5; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Header */
+  .header { text-align: center; padding: 48px 24px 32px; }
+  .header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+  .header p { color: var(--text2); font-size: 0.95rem; }
+  .header .badge { display: inline-block; margin-top: 12px; padding: 6px 16px;
+    border-radius: 20px; font-size: 1.3rem; font-weight: 700; }
+  .badge-green  { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-yellow { background: rgba(210,153,34,0.15); color: var(--yellow); }
+  .badge-red    { background: rgba(248,81,73,0.15); color: var(--red); }
+
+  /* Stats bar */
+  .stats { display: flex; justify-content: center; gap: 32px; padding: 0 24px 32px; flex-wrap: wrap; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--card-radius); padding: 16px 24px; text-align: center; min-width: 120px; }
+  .stat-card .num { font-size: 1.6rem; font-weight: 700; }
+  .stat-card .label { font-size: 0.8rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* Filter bar */
+  .filter-bar { display: flex; justify-content: center; gap: 8px; padding: 0 24px 24px; flex-wrap: wrap; }
+  .filter-btn { padding: 6px 16px; border-radius: 20px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text2); cursor: pointer; font-size: 0.85rem; transition: all .2s; }
+  .filter-btn:hover, .filter-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(88,166,255,0.08); }
+
+  /* Summary table */
+  .table-wrap { max-width: 1100px; margin: 0 auto 40px; padding: 0 24px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th { text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--border);
+    color: var(--text2); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  tr.clickable { cursor: pointer; transition: background .15s; }
+  tr.clickable:hover { background: rgba(88,166,255,0.06); }
+  .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .dot-green  { background: var(--green); }
+  .dot-yellow { background: var(--yellow); }
+  .dot-red    { background: var(--red); }
+  .score { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pages-badge { font-size: 0.78rem; padding: 2px 8px; border-radius: 10px; background: rgba(139,148,158,0.12); color: var(--text2); }
+  .size-ratio { font-size: 0.78rem; color: var(--text2); }
+
+  /* Detail cards */
+  .details-section { max-width: 1400px; margin: 0 auto; padding: 0 24px 60px; }
+  .case-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--card-radius);
+    margin-bottom: 32px; overflow: hidden; }
+  .case-card.hidden { display: none; }
+  .case-header { display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 20px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .case-header h3 { font-size: 1.05rem; font-weight: 600; }
+  .case-header .scores { display: flex; gap: 16px; font-size: 0.85rem; color: var(--text2); }
+  .case-header .scores span { font-weight: 600; }
+  .case-body { padding: 20px; }
+  .case-body.collapsed { display: none; }
+
+  /* Page comparisons */
+  .page-compare { margin-bottom: 24px; }
+  .page-compare h4 { font-size: 0.85rem; color: var(--text2); margin-bottom: 8px;
+    text-transform: uppercase; letter-spacing: 0.04em; }
+  .compare-row { display: flex; gap: 12px; }
+  .compare-col { flex: 1; min-width: 0; }
+  .compare-col .col-label { font-size: 0.75rem; color: var(--text2); text-align: center;
+    margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .compare-col img { width: 100%; border: 1px solid var(--border); border-radius: 8px;
+    background: #fff; display: block; }
+  .compare-col .no-img { width: 100%; aspect-ratio: 0.707; border: 1px dashed var(--border);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    color: var(--text2); font-size: 0.85rem; }
+  .visual-score-tag { text-align: center; margin-top: 4px; font-size: 0.78rem; color: var(--text2); }
+
+  /* Diff toggle */
+  .diff-toggle { margin-top: 12px; }
+  .diff-toggle summary { cursor: pointer; font-size: 0.85rem; color: var(--accent); }
+  .diff-block { background: #0d1117; border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; margin-top: 8px; font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.78rem; white-space: pre-wrap; overflow-x: auto; line-height: 1.6; color: var(--text2); }
+  .diff-block .diff-add { color: var(--green); }
+  .diff-block .diff-del { color: var(--red); }
+  .diff-block .diff-hunk { color: var(--accent); }
+
+  /* Expand / Collapse all */
+  .toolbar { max-width: 1400px; margin: 0 auto; padding: 0 24px 16px;
+    display: flex; justify-content: flex-end; gap: 8px; }
+  .toolbar button { padding: 5px 14px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text2); cursor: pointer; font-size: 0.82rem; }
+  .toolbar button:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Scroll-to-top */
+  .scroll-top { position: fixed; bottom: 24px; right: 24px; width: 40px; height: 40px;
+    border-radius: 50%; background: var(--accent); color: #fff; border: none; cursor: pointer;
+    font-size: 1.2rem; display: none; align-items: center; justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4); z-index: 100; }
+  .scroll-top.visible { display: flex; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .compare-row { flex-direction: column; }
+    .header h1 { font-size: 1.4rem; }
+    .stats { gap: 12px; }
+    .stat-card { min-width: 90px; padding: 12px 16px; }
+    .case-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  }
+
+  /* Slider mode */
+  .slider-container { position: relative; overflow: hidden; border-radius: 8px; border: 1px solid var(--border); cursor: ew-resize; user-select: none; }
+  .slider-container img { display: block; width: 100%; }
+  .slider-container .slider-overlay { position: absolute; top: 0; left: 0; height: 100%; overflow: hidden; border-right: 2px solid var(--accent); }
+  .slider-container .slider-overlay img { display: block; height: 100%; width: auto; min-width: 100%; max-width: none; }
+  .slider-handle { position: absolute; top: 50%; transform: translate(-50%, -50%);
+    width: 32px; height: 32px; border-radius: 50%; background: var(--accent);
+    display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5); pointer-events: none; z-index: 2; }
+
+  /* View mode toggle */
+  .view-toggle { display: flex; gap: 4px; background: rgba(139,148,158,0.12); border-radius: 8px; padding: 2px; }
+  .view-toggle button { padding: 4px 12px; border: none; border-radius: 6px; background: transparent;
+    color: var(--text2); cursor: pointer; font-size: 0.78rem; }
+  .view-toggle button.active { background: var(--accent); color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>MiniPdf vs LibreOffice</h1>
+  <p>Excel → PDF 轉換品質視覺對比報告</p>
+  <div class="badge" id="overallBadge"></div>
+</div>
+
+<div class="stats" id="statsBar"></div>
+
+<div class="filter-bar" id="filterBar">
+  <button class="filter-btn active" data-filter="all">全部</button>
+  <button class="filter-btn" data-filter="green">🟢 優秀 ≥0.95</button>
+  <button class="filter-btn" data-filter="yellow">🟡 尚可 0.85–0.95</button>
+  <button class="filter-btn" data-filter="red">🔴 待改善 &lt;0.85</button>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th><th>測試案例</th><th>文字相似度</th><th>視覺相似度</th><th>頁數 (M/R)</th><th>檔案大小比</th><th>綜合分數</th>
+      </tr>
+    </thead>
+    <tbody id="summaryBody"></tbody>
+  </table>
+</div>
+
+<div class="toolbar">
+  <div class="view-toggle" id="globalViewToggle">
+    <button class="active" data-mode="side">並排</button>
+    <button data-mode="slider">滑桿</button>
+  </div>
+  <button id="expandAll">展開全部</button>
+  <button id="collapseAll">收合全部</button>
+</div>
+
+<div class="details-section" id="detailsSection"></div>
+
+<button class="scroll-top" id="scrollTop" title="回到頂部">↑</button>
+
+<script>
+// === Embedded report data ===
+const DATA = [
+  {
+    "name": "classic01_basic_table_with_headers",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 1267, "reference_size": 30311,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 0.9481, "flat_text_similarity": 0.9481,
+    "text_diff": "--- minipdf/classic01_basic_table_with_headers.pdf\n+++ reference/classic01_basic_table_with_headers.pdf\n@@ -2,14 +2,10 @@\n Age\n\n City\n\n Alice\n\n-30\n\n-New York\n\n+30 New York\n\n Bob\n\n-25\n\n-London\n\n+25 London\n\n Charlie\n\n-35\n\n-Tokyo\n\n+35 Tokyo\n\n Diana\n\n-28\n\n-Paris\n+28 Paris",
+    "visual_scores": [0.9954], "visual_avg": 0.9954,
+    "diff_images": [{"page":1,"minipdf_img":"classic01_basic_table_with_headers_p1_minipdf.png","reference_img":"classic01_basic_table_with_headers_p1_reference.png"}],
+    "overall_score": 0.9774
+  },
+  {
+    "name": "classic02_multiple_worksheets",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 2234, "reference_size": 36003,
+    "minipdf_pages": 3, "reference_pages": 3,
+    "text_similarity": 0.9856, "flat_text_similarity": 0.9835,
+    "text_diff": "--- minipdf/classic02_multiple_worksheets.pdf\n+++ reference/classic02_multiple_worksheets.pdf\n@@ -9,8 +9,7 @@\n Q4\n\n 480\n\n ---PAGE---\n\n-Category\n\n-Amount\n\n+Category Amount\n\n Rent\n\n 500\n\n Salary\n\n@@ -20,7 +19,7 @@\n ---PAGE---\n\n Metric\n\n Value\n\n-Total Revenue\n\n+Total Reve\n\n 1130\n\n Total Costs\n\n 3700",
+    "visual_scores": [0.9971,0.9969,0.9965], "visual_avg": 0.9968,
+    "diff_images": [
+      {"page":1,"minipdf_img":"classic02_multiple_worksheets_p1_minipdf.png","reference_img":"classic02_multiple_worksheets_p1_reference.png"},
+      {"page":2,"minipdf_img":"classic02_multiple_worksheets_p2_minipdf.png","reference_img":"classic02_multiple_worksheets_p2_reference.png"},
+      {"page":3,"minipdf_img":"classic02_multiple_worksheets_p3_minipdf.png","reference_img":"classic02_multiple_worksheets_p3_reference.png"}
+    ],
+    "overall_score": 0.993
+  },
+  {
+    "name": "classic03_empty_workbook",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 576, "reference_size": 7283,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 1.0, "flat_text_similarity": 1.0,
+    "text_diff": "(identical)",
+    "visual_scores": [1.0], "visual_avg": 1.0,
+    "diff_images": [{"page":1,"minipdf_img":"classic03_empty_workbook_p1_minipdf.png","reference_img":"classic03_empty_workbook_p1_reference.png"}],
+    "overall_score": 1.0
+  },
+  {
+    "name": "classic04_single_cell",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 623, "reference_size": 19860,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 1.0, "flat_text_similarity": 1.0,
+    "text_diff": "(identical)",
+    "visual_scores": [0.9996], "visual_avg": 0.9996,
+    "diff_images": [{"page":1,"minipdf_img":"classic04_single_cell_p1_minipdf.png","reference_img":"classic04_single_cell_p1_reference.png"}],
+    "overall_score": 0.9998
+  },
+  {
+    "name": "classic05_wide_table",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 8636, "reference_size": 62308,
+    "minipdf_pages": 3, "reference_pages": 3,
+    "text_similarity": 1.0, "flat_text_similarity": 1.0,
+    "text_diff": "(identical)",
+    "visual_scores": [0.9909,0.9901,0.9945], "visual_avg": 0.9918,
+    "diff_images": [
+      {"page":1,"minipdf_img":"classic05_wide_table_p1_minipdf.png","reference_img":"classic05_wide_table_p1_reference.png"},
+      {"page":2,"minipdf_img":"classic05_wide_table_p2_minipdf.png","reference_img":"classic05_wide_table_p2_reference.png"},
+      {"page":3,"minipdf_img":"classic05_wide_table_p3_minipdf.png","reference_img":"classic05_wide_table_p3_reference.png"}
+    ],
+    "overall_score": 0.9967
+  },
+  {
+    "name": "classic06_tall_table",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 37084, "reference_size": 185703,
+    "minipdf_pages": 5, "reference_pages": 5,
+    "text_similarity": 1.0, "flat_text_similarity": 1.0,
+    "text_diff": "(identical)",
+    "visual_scores": [0.8767,0.8722,0.8677,0.865,0.9081], "visual_avg": 0.8779,
+    "diff_images": [
+      {"page":1,"minipdf_img":"classic06_tall_table_p1_minipdf.png","reference_img":"classic06_tall_table_p1_reference.png"},
+      {"page":2,"minipdf_img":"classic06_tall_table_p2_minipdf.png","reference_img":"classic06_tall_table_p2_reference.png"},
+      {"page":3,"minipdf_img":"classic06_tall_table_p3_minipdf.png","reference_img":"classic06_tall_table_p3_reference.png"},
+      {"page":4,"minipdf_img":"classic06_tall_table_p4_minipdf.png","reference_img":"classic06_tall_table_p4_reference.png"},
+      {"page":5,"minipdf_img":"classic06_tall_table_p5_minipdf.png","reference_img":"classic06_tall_table_p5_reference.png"}
+    ],
+    "overall_score": 0.9512
+  },
+  {
+    "name": "classic07_numbers_only",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 1092, "reference_size": 24806,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 1.0, "flat_text_similarity": 1.0,
+    "text_diff": "(identical)",
+    "visual_scores": [0.9985], "visual_avg": 0.9985,
+    "diff_images": [{"page":1,"minipdf_img":"classic07_numbers_only_p1_minipdf.png","reference_img":"classic07_numbers_only_p1_reference.png"}],
+    "overall_score": 0.9994
+  },
+  {
+    "name": "classic08_mixed_text_and_numbers",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 1132, "reference_size": 27336,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 1.0, "flat_text_similarity": 1.0,
+    "text_diff": "(identical)",
+    "visual_scores": [0.9965], "visual_avg": 0.9965,
+    "diff_images": [{"page":1,"minipdf_img":"classic08_mixed_text_and_numbers_p1_minipdf.png","reference_img":"classic08_mixed_text_and_numbers_p1_reference.png"}],
+    "overall_score": 0.9986
+  },
+  {
+    "name": "classic09_long_text",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 3667, "reference_size": 29170,
+    "minipdf_pages": 1, "reference_pages": 12,
+    "text_similarity": 0.1829, "flat_text_similarity": 0.1829,
+    "text_diff": "(long text truncation mismatch — MiniPdf 1 page vs Reference 12 pages)",
+    "visual_scores": [0.909,0,0,0,0,0,0,0,0,0,0,0], "visual_avg": 0.0757,
+    "diff_images": [
+      {"page":1,"minipdf_img":"classic09_long_text_p1_minipdf.png","reference_img":"classic09_long_text_p1_reference.png"},
+      {"page":2,"minipdf_img":null,"reference_img":"classic09_long_text_p2_reference.png"}
+    ],
+    "overall_score": 0.2034
+  },
+  {
+    "name": "classic10_special_xml_characters",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 968, "reference_size": 27644,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 1.0, "flat_text_similarity": 1.0,
+    "text_diff": "(identical)",
+    "visual_scores": [0.9937], "visual_avg": 0.9937,
+    "diff_images": [{"page":1,"minipdf_img":"classic10_special_xml_characters_p1_minipdf.png","reference_img":"classic10_special_xml_characters_p1_reference.png"}],
+    "overall_score": 0.9975
+  },
+  {
+    "name": "classic11_sparse_rows",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 1037, "reference_size": 23538,
+    "minipdf_pages": 2, "reference_pages": 2,
+    "text_similarity": 1.0, "flat_text_similarity": 1.0,
+    "text_diff": "(identical)",
+    "visual_scores": [0.9984,0.9995], "visual_avg": 0.999,
+    "diff_images": [
+      {"page":1,"minipdf_img":"classic11_sparse_rows_p1_minipdf.png","reference_img":"classic11_sparse_rows_p1_reference.png"},
+      {"page":2,"minipdf_img":"classic11_sparse_rows_p2_minipdf.png","reference_img":"classic11_sparse_rows_p2_reference.png"}
+    ],
+    "overall_score": 0.9996
+  },
+  {
+    "name": "classic12_sparse_columns",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 860, "reference_size": 24923,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 1.0, "flat_text_similarity": 1.0,
+    "text_diff": "(identical)",
+    "visual_scores": [0.9975], "visual_avg": 0.9975,
+    "diff_images": [{"page":1,"minipdf_img":"classic12_sparse_columns_p1_minipdf.png","reference_img":"classic12_sparse_columns_p1_reference.png"}],
+    "overall_score": 0.999
+  },
+  {
+    "name": "classic13_date_strings",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 1168, "reference_size": 29104,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 0.9254, "flat_text_similarity": 0.9254,
+    "text_diff": "--- minipdf/classic13_date_strings.pdf\n+++ reference/classic13_date_strings.pdf\n@@ -1,12 +1,7 @@\n Date\n\n Event\n\n-2025-01-15\n\n-Launch\n\n+2025-01-1 Launch\n\n-2025-06-30\n\n-Release\n\n+2025-06-3 Release",
+    "visual_scores": [0.9938], "visual_avg": 0.9938,
+    "diff_images": [{"page":1,"minipdf_img":"classic13_date_strings_p1_minipdf.png","reference_img":"classic13_date_strings_p1_reference.png"}],
+    "overall_score": 0.9677
+  },
+  {
+    "name": "classic14_decimal_numbers",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 1146, "reference_size": 29057,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 0.987, "flat_text_similarity": 0.987,
+    "text_diff": "--- minipdf/classic14_decimal_numbers.pdf\n+++ reference/classic14_decimal_numbers.pdf\n@@ -1,5 +1,4 @@\n-Constant\n\n-Value\n\n+Constant Value\n\n Pi\n\n 3.14159",
+    "visual_scores": [0.9956], "visual_avg": 0.9956,
+    "diff_images": [{"page":1,"minipdf_img":"classic14_decimal_numbers_p1_minipdf.png","reference_img":"classic14_decimal_numbers_p1_reference.png"}],
+    "overall_score": 0.993
+  },
+  {
+    "name": "classic15_negative_numbers",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 1230, "reference_size": 28526,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 1.0, "flat_text_similarity": 1.0,
+    "text_diff": "(identical)",
+    "visual_scores": [0.9953], "visual_avg": 0.9953,
+    "diff_images": [{"page":1,"minipdf_img":"classic15_negative_numbers_p1_minipdf.png","reference_img":"classic15_negative_numbers_p1_reference.png"}],
+    "overall_score": 0.9981
+  },
+  {
+    "name": "classic16_percentage_strings",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 1147, "reference_size": 29888,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 0.9816, "flat_text_similarity": 0.9816,
+    "text_diff": "--- minipdf/classic16_percentage_strings.pdf\n+++ reference/classic16_percentage_strings.pdf\n@@ -1,11 +1,9 @@\n Metric\n\n Rate\n\n-Conversion\n\n-12.5%\n\n+Conversion12.5%",
+    "visual_scores": [0.9949], "visual_avg": 0.9949,
+    "diff_images": [{"page":1,"minipdf_img":"classic16_percentage_strings_p1_minipdf.png","reference_img":"classic16_percentage_strings_p1_reference.png"}],
+    "overall_score": 0.9906
+  },
+  {
+    "name": "classic17_currency_strings",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 1249, "reference_size": 29862,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 0.951, "flat_text_similarity": 0.951,
+    "text_diff": "(minor text extraction diff)",
+    "visual_scores": [0.9936], "visual_avg": 0.9936,
+    "diff_images": [{"page":1,"minipdf_img":"classic17_currency_strings_p1_minipdf.png","reference_img":"classic17_currency_strings_p1_reference.png"}],
+    "overall_score": 0.9778
+  },
+  {
+    "name": "classic18_large_dataset",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 483743, "reference_size": 2487195,
+    "minipdf_pages": 24, "reference_pages": 24,
+    "text_similarity": 1.0, "flat_text_similarity": 1.0,
+    "text_diff": "(identical)",
+    "visual_scores": [0.8215,0.8093,0.7964,0.7873,0.7847,0.781,0.7761,0.7781,0.7754,0.7785,0.7786,0.7772,0.7776,0.7728,0.7756,0.7725,0.7818,0.7844,0.7783,0.7708,0.7673,0.775,0.7719,0.9342],
+    "visual_avg": 0.7878,
+    "diff_images": [
+      {"page":1,"minipdf_img":"classic18_large_dataset_p1_minipdf.png","reference_img":"classic18_large_dataset_p1_reference.png"},
+      {"page":2,"minipdf_img":"classic18_large_dataset_p2_minipdf.png","reference_img":"classic18_large_dataset_p2_reference.png"},
+      {"page":3,"minipdf_img":"classic18_large_dataset_p3_minipdf.png","reference_img":"classic18_large_dataset_p3_reference.png"}
+    ],
+    "overall_score": 0.9151
+  },
+  {
+    "name": "classic19_single_column_list",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 1576, "reference_size": 29688,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 1.0, "flat_text_similarity": 1.0,
+    "text_diff": "(identical)",
+    "visual_scores": [0.9921], "visual_avg": 0.9921,
+    "diff_images": [{"page":1,"minipdf_img":"classic19_single_column_list_p1_minipdf.png","reference_img":"classic19_single_column_list_p1_reference.png"}],
+    "overall_score": 0.9968
+  },
+  {
+    "name": "classic20_all_empty_cells",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 576, "reference_size": 7283,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 1.0, "flat_text_similarity": 1.0,
+    "text_diff": "(identical)",
+    "visual_scores": [1.0], "visual_avg": 1.0,
+    "diff_images": [{"page":1,"minipdf_img":"classic20_all_empty_cells_p1_minipdf.png","reference_img":"classic20_all_empty_cells_p1_reference.png"}],
+    "overall_score": 1.0
+  },
+  {
+    "name": "classic21_header_only",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 807, "reference_size": 22034,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 1.0, "flat_text_similarity": 1.0,
+    "text_diff": "(identical)",
+    "visual_scores": [0.9985], "visual_avg": 0.9985,
+    "diff_images": [{"page":1,"minipdf_img":"classic21_header_only_p1_minipdf.png","reference_img":"classic21_header_only_p1_reference.png"}],
+    "overall_score": 0.9994
+  },
+  {
+    "name": "classic22_long_sheet_name",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 850, "reference_size": 23683,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 1.0, "flat_text_similarity": 1.0,
+    "text_diff": "(identical)",
+    "visual_scores": [0.9981], "visual_avg": 0.9981,
+    "diff_images": [{"page":1,"minipdf_img":"classic22_long_sheet_name_p1_minipdf.png","reference_img":"classic22_long_sheet_name_p1_reference.png"}],
+    "overall_score": 0.9992
+  },
+  {
+    "name": "classic23_unicode_text",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 1559, "reference_size": 67722,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 0.6694, "flat_text_similarity": 0.6694,
+    "text_diff": "(unicode text extraction mismatch — visual comparison recommended)",
+    "visual_scores": [0.9914], "visual_avg": 0.9914,
+    "diff_images": [{"page":1,"minipdf_img":"classic23_unicode_text_p1_minipdf.png","reference_img":"classic23_unicode_text_p1_reference.png"}],
+    "overall_score": 0.8643
+  },
+  {
+    "name": "classic24_red_text",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 1044, "reference_size": 39031,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 0.9892, "flat_text_similarity": 0.9892,
+    "text_diff": "--- minipdf/classic24_red_text.pdf\n+++ reference/classic24_red_text.pdf\n@@ -4,5 +4,4 @@\n Something went wrong\n\n OK\n\n All systems operational\n\n-Warning\n\n-Check disk space\n+Warning Check disk space",
+    "visual_scores": [0.9952], "visual_avg": 0.9952,
+    "diff_images": [{"page":1,"minipdf_img":"classic24_red_text_p1_minipdf.png","reference_img":"classic24_red_text_p1_reference.png"}],
+    "overall_score": 0.9938
+  },
+  {
+    "name": "classic25_multiple_colors",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 1726, "reference_size": 43116,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 0.991, "flat_text_similarity": 0.991,
+    "text_diff": "(minor column merge diff)",
+    "visual_scores": [0.992], "visual_avg": 0.992,
+    "diff_images": [{"page":1,"minipdf_img":"classic25_multiple_colors_p1_minipdf.png","reference_img":"classic25_multiple_colors_p1_reference.png"}],
+    "overall_score": 0.9932
+  },
+  {
+    "name": "classic26_inline_strings",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 1007, "reference_size": 25018,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 1.0, "flat_text_similarity": 1.0,
+    "text_diff": "(identical)",
+    "visual_scores": [0.9962], "visual_avg": 0.9962,
+    "diff_images": [{"page":1,"minipdf_img":"classic26_inline_strings_p1_minipdf.png","reference_img":"classic26_inline_strings_p1_reference.png"}],
+    "overall_score": 0.9985
+  },
+  {
+    "name": "classic27_single_row",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 926, "reference_size": 23681,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 1.0, "flat_text_similarity": 1.0,
+    "text_diff": "(identical)",
+    "visual_scores": [0.9982], "visual_avg": 0.9982,
+    "diff_images": [{"page":1,"minipdf_img":"classic27_single_row_p1_minipdf.png","reference_img":"classic27_single_row_p1_reference.png"}],
+    "overall_score": 0.9993
+  },
+  {
+    "name": "classic28_duplicate_values",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 1459, "reference_size": 24729,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 1.0, "flat_text_similarity": 1.0,
+    "text_diff": "(identical)",
+    "visual_scores": [0.9959], "visual_avg": 0.9959,
+    "diff_images": [{"page":1,"minipdf_img":"classic28_duplicate_values_p1_minipdf.png","reference_img":"classic28_duplicate_values_p1_reference.png"}],
+    "overall_score": 0.9984
+  },
+  {
+    "name": "classic29_formula_results",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 1015, "reference_size": 27548,
+    "minipdf_pages": 1, "reference_pages": 1,
+    "text_similarity": 0.6733, "flat_text_similarity": 0.6733,
+    "text_diff": "--- minipdf/classic29_formula_results.pdf\n+++ reference/classic29_formula_results.pdf\n@@ -4,7 +4,15 @@\n Product\n\n 10\n\n 20\n\n+30\n\n+200\n\n 5\n\n 15\n\n+20\n\n+75\n\n 100\n\n-200\n+200\n\n+300\n\n+20000\n\n+350\n\n+20275",
+    "visual_scores": [0.9968], "visual_avg": 0.9968,
+    "diff_images": [{"page":1,"minipdf_img":"classic29_formula_results_p1_minipdf.png","reference_img":"classic29_formula_results_p1_reference.png"}],
+    "overall_score": 0.868
+  },
+  {
+    "name": "classic30_mixed_empty_and_filled_sheets",
+    "minipdf_exists": true, "reference_exists": true,
+    "minipdf_size": 1347, "reference_size": 27418,
+    "minipdf_pages": 2, "reference_pages": 2,
+    "text_similarity": 0.9706, "flat_text_similarity": 0.9649,
+    "text_diff": "--- minipdf/classic30_mixed_empty_and_filled_sheets.pdf\n+++ reference/classic30_mixed_empty_and_filled_sheets.pdf\n@@ -5,9 +5,7 @@\n Baz\n\n Qux\n\n ---PAGE---\n\n-Column1\n\n-Column2\n\n-Column3\n\n+Column1 Column2 Column3\n\n 1\n\n 2\n\n 3",
+    "visual_scores": [0.9983,0.9981], "visual_avg": 0.9982,
+    "diff_images": [
+      {"page":1,"minipdf_img":"classic30_mixed_empty_and_filled_sheets_p1_minipdf.png","reference_img":"classic30_mixed_empty_and_filled_sheets_p1_reference.png"},
+      {"page":2,"minipdf_img":"classic30_mixed_empty_and_filled_sheets_p2_minipdf.png","reference_img":"classic30_mixed_empty_and_filled_sheets_p2_reference.png"}
+    ],
+    "overall_score": 0.9875
+  }
+];
+
+// === Helpers ===
+function scoreColor(s) {
+  if (s >= 0.95) return 'green';
+  if (s >= 0.85) return 'yellow';
+  return 'red';
+}
+function pct(v) { return (v * 100).toFixed(1) + '%'; }
+function humanSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  return (b / 1048576).toFixed(1) + ' MB';
+}
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function formatDiff(diff) {
+  if (!diff || diff === '(identical)') return '<span style="color:var(--green)">✓ 完全相同</span>';
+  return diff.split('\n').map(line => {
+    const esc = escapeHtml(line);
+    if (line.startsWith('@@')) return `<span class="diff-hunk">${esc}</span>`;
+    if (line.startsWith('+')) return `<span class="diff-add">${esc}</span>`;
+    if (line.startsWith('-')) return `<span class="diff-del">${esc}</span>`;
+    return esc;
+  }).join('\n');
+}
+function friendlyName(name) {
+  return name.replace(/^classic\d+_/, '').replace(/_/g, ' ');
+}
+
+// === Render ===
+const avgScore = DATA.reduce((s, d) => s + d.overall_score, 0) / DATA.length;
+const badge = document.getElementById('overallBadge');
+badge.textContent = `平均綜合分數 ${pct(avgScore)}`;
+badge.className = 'badge badge-' + scoreColor(avgScore);
+
+// Stats
+const greenCount = DATA.filter(d => d.overall_score >= 0.95).length;
+const yellowCount = DATA.filter(d => d.overall_score >= 0.85 && d.overall_score < 0.95).length;
+const redCount = DATA.filter(d => d.overall_score < 0.85).length;
+document.getElementById('statsBar').innerHTML = `
+  <div class="stat-card"><div class="num">${DATA.length}</div><div class="label">測試案例</div></div>
+  <div class="stat-card"><div class="num" style="color:var(--green)">${greenCount}</div><div class="label">優秀 ≥95%</div></div>
+  <div class="stat-card"><div class="num" style="color:var(--yellow)">${yellowCount}</div><div class="label">尚可 85-95%</div></div>
+  <div class="stat-card"><div class="num" style="color:var(--red)">${redCount}</div><div class="label">待改善 &lt;85%</div></div>
+  <div class="stat-card"><div class="num">${pct(avgScore)}</div><div class="label">平均分數</div></div>
+`;
+
+// Summary table
+const tbody = document.getElementById('summaryBody');
+DATA.forEach((d, i) => {
+  const c = scoreColor(d.overall_score);
+  const ratio = (d.minipdf_size / d.reference_size * 100).toFixed(0);
+  const tr = document.createElement('tr');
+  tr.className = 'clickable';
+  tr.dataset.filter = c;
+  tr.innerHTML = `
+    <td>${i + 1}</td>
+    <td><span class="status-dot dot-${c}"></span>${friendlyName(d.name)}</td>
+    <td class="score">${pct(d.text_similarity)}</td>
+    <td class="score">${pct(d.visual_avg)}</td>
+    <td><span class="pages-badge">${d.minipdf_pages} / ${d.reference_pages}</span></td>
+    <td class="size-ratio">${humanSize(d.minipdf_size)} / ${humanSize(d.reference_size)} <small>(${ratio}%)</small></td>
+    <td class="score" style="color:var(--${c})">${pct(d.overall_score)}</td>
+  `;
+  tr.addEventListener('click', () => {
+    const card = document.getElementById('case-' + d.name);
+    if (card) {
+      card.classList.remove('hidden');
+      card.querySelector('.case-body').classList.remove('collapsed');
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+  tbody.appendChild(tr);
+});
+
+// Details
+let globalViewMode = 'side';
+const detailsSection = document.getElementById('detailsSection');
+
+DATA.forEach((d, i) => {
+  const c = scoreColor(d.overall_score);
+  const card = document.createElement('div');
+  card.className = 'case-card';
+  card.id = 'case-' + d.name;
+  card.dataset.filter = c;
+
+  // Only show first page images by default for large datasets
+  const maxPages = d.diff_images.length;
+
+  let pagesHtml = '';
+  d.diff_images.forEach((img, pi) => {
+    const vs = d.visual_scores[pi] !== undefined ? d.visual_scores[pi] : null;
+    const vsText = vs !== null ? pct(vs) : '—';
+    const vsColor = vs !== null ? scoreColor(vs) : 'text2';
+
+    const miniSrc = img.minipdf_img ? `images/${img.minipdf_img}` : null;
+    const refSrc = img.reference_img ? `images/${img.reference_img}` : null;
+
+    pagesHtml += `
+      <div class="page-compare" data-mini-src="${miniSrc || ''}" data-ref-src="${refSrc || ''}">
+        <h4>第 ${img.page} 頁 <span style="color:var(--${vsColor});margin-left:8px">SSIM ${vsText}</span></h4>
+        <div class="compare-view" data-mode="side">
+          <div class="compare-row">
+            <div class="compare-col">
+              <div class="col-label">MiniPdf</div>
+              ${miniSrc ? `<img src="${miniSrc}" alt="MiniPdf page ${img.page}" loading="lazy">` : '<div class="no-img">無此頁</div>'}
+            </div>
+            <div class="compare-col">
+              <div class="col-label">LibreOffice (Reference)</div>
+              ${refSrc ? `<img src="${refSrc}" alt="Reference page ${img.page}" loading="lazy">` : '<div class="no-img">無此頁</div>'}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  card.innerHTML = `
+    <div class="case-header">
+      <h3><span class="status-dot dot-${c}"></span>#${i + 1} ${d.name}</h3>
+      <div class="scores">
+        <span>文字 ${pct(d.text_similarity)}</span>
+        <span>視覺 ${pct(d.visual_avg)}</span>
+        <span style="color:var(--${c})">綜合 ${pct(d.overall_score)}</span>
+      </div>
+    </div>
+    <div class="case-body collapsed">
+      ${pagesHtml}
+      ${d.text_diff && d.text_diff !== '(identical)' ? `
+      <details class="diff-toggle">
+        <summary>文字差異 (Text Diff)</summary>
+        <div class="diff-block">${formatDiff(d.text_diff)}</div>
+      </details>` : ''}
+    </div>
+  `;
+
+  card.querySelector('.case-header').addEventListener('click', () => {
+    card.querySelector('.case-body').classList.toggle('collapsed');
+  });
+
+  detailsSection.appendChild(card);
+});
+
+// === Slider mode ===
+function createSlider(container, miniSrc, refSrc) {
+  if (!miniSrc || !refSrc) return;
+  container.innerHTML = `
+    <div class="slider-container">
+      <img src="${refSrc}" alt="Reference" style="display:block;width:100%;">
+      <div class="slider-overlay" style="width:50%">
+        <img src="${miniSrc}" alt="MiniPdf">
+      </div>
+      <div class="slider-handle" style="left:50%">⇔</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text2);margin-top:4px;">
+      <span>← MiniPdf</span><span>LibreOffice →</span>
+    </div>
+  `;
+  const sc = container.querySelector('.slider-container');
+  const overlay = sc.querySelector('.slider-overlay');
+  const handle = sc.querySelector('.slider-handle');
+  let dragging = false;
+  function updatePos(x) {
+    const rect = sc.getBoundingClientRect();
+    let pctVal = ((x - rect.left) / rect.width) * 100;
+    pctVal = Math.max(0, Math.min(100, pctVal));
+    overlay.style.width = pctVal + '%';
+    handle.style.left = pctVal + '%';
+  }
+  sc.addEventListener('pointerdown', e => { dragging = true; sc.setPointerCapture(e.pointerId); updatePos(e.clientX); });
+  sc.addEventListener('pointermove', e => { if (dragging) updatePos(e.clientX); });
+  sc.addEventListener('pointerup', () => { dragging = false; });
+}
+
+function createSideView(container, miniSrc, refSrc) {
+  container.innerHTML = `
+    <div class="compare-row">
+      <div class="compare-col">
+        <div class="col-label">MiniPdf</div>
+        ${miniSrc ? `<img src="${miniSrc}" alt="MiniPdf" loading="lazy">` : '<div class="no-img">無此頁</div>'}
+      </div>
+      <div class="compare-col">
+        <div class="col-label">LibreOffice (Reference)</div>
+        ${refSrc ? `<img src="${refSrc}" alt="Reference" loading="lazy">` : '<div class="no-img">無此頁</div>'}
+      </div>
+    </div>
+  `;
+}
+
+function applyViewMode(mode) {
+  globalViewMode = mode;
+  document.querySelectorAll('.page-compare').forEach(pc => {
+    const miniSrc = pc.dataset.miniSrc || null;
+    const refSrc = pc.dataset.refSrc || null;
+    const view = pc.querySelector('.compare-view');
+    if (miniSrc === 'null' || miniSrc === '') {
+      // no minipdf image, keep side view
+      return;
+    }
+    if (mode === 'slider' && miniSrc && refSrc) {
+      createSlider(view, miniSrc, refSrc);
+    } else {
+      createSideView(view, miniSrc === 'null' ? null : miniSrc, refSrc === 'null' ? null : refSrc);
+    }
+  });
+}
+
+// View toggle
+document.getElementById('globalViewToggle').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  document.querySelectorAll('#globalViewToggle button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyViewMode(btn.dataset.mode);
+});
+
+// Filter
+document.getElementById('filterBar').addEventListener('click', e => {
+  const btn = e.target.closest('.filter-btn');
+  if (!btn) return;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const f = btn.dataset.filter;
+  // Table rows
+  document.querySelectorAll('#summaryBody tr').forEach(tr => {
+    tr.style.display = (f === 'all' || tr.dataset.filter === f) ? '' : 'none';
+  });
+  // Detail cards
+  document.querySelectorAll('.case-card').forEach(card => {
+    if (f === 'all' || card.dataset.filter === f) {
+      card.classList.remove('hidden');
+    } else {
+      card.classList.add('hidden');
+    }
+  });
+});
+
+// Expand / Collapse
+document.getElementById('expandAll').addEventListener('click', () => {
+  document.querySelectorAll('.case-body').forEach(b => b.classList.remove('collapsed'));
+});
+document.getElementById('collapseAll').addEventListener('click', () => {
+  document.querySelectorAll('.case-body').forEach(b => b.classList.add('collapsed'));
+});
+
+// Scroll to top
+const scrollBtn = document.getElementById('scrollTop');
+window.addEventListener('scroll', () => {
+  scrollBtn.classList.toggle('visible', window.scrollY > 400);
+});
+scrollBtn.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+</script>
+</body>
+</html>

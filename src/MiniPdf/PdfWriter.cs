@@ -112,7 +112,6 @@ internal sealed class PdfWriter
     private static string BuildContentStream(PdfPage page)
     {
         var sb = new StringBuilder();
-        sb.Append("BT\n");
 
         foreach (var block in page.TextBlocks)
         {
@@ -120,6 +119,8 @@ internal sealed class PdfWriter
             var x = block.X.ToString(CultureInfo.InvariantCulture);
             var y = block.Y.ToString(CultureInfo.InvariantCulture);
             var escapedText = EscapePdfString(block.Text);
+
+            sb.Append("BT\n");
 
             // Set text color if not black
             if (!block.Color.IsBlack)
@@ -137,13 +138,9 @@ internal sealed class PdfWriter
             sb.Append($"/F1 {fontSize} Tf\n");
             sb.Append($"{x} {y} Td\n");
             sb.Append($"({escapedText}) Tj\n");
-            // Reset position for next absolute placement
-            var nx = (-block.X).ToString(CultureInfo.InvariantCulture);
-            var ny = (-block.Y).ToString(CultureInfo.InvariantCulture);
-            sb.Append($"{nx} {ny} Td\n");
+            sb.Append("ET\n");
         }
 
-        sb.Append("ET\n");
         return sb.ToString();
     }
 

@@ -62,7 +62,7 @@ def step_generate_minipdf_pdfs():
 
     # Use dotnet run with the .cs script
     return run(
-        ["dotnet", "run", "--project", "convert_xlsx_to_pdf.cs"],
+        ["dotnet", "run", "convert_xlsx_to_pdf.cs"],
         cwd=str(scripts_dir),
     )
 
