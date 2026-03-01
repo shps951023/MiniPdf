@@ -223,8 +223,27 @@ internal static class ExcelReader
         var doc = XDocument.Load(stream);
         var ns = doc.Root?.GetDefaultNamespace() ?? XNamespace.None;
 
+        var lastRowNumber = 0;
+
         foreach (var row in doc.Descendants(ns + "row"))
         {
+            // Parse the row number to detect gaps (sparse rows)
+            var rowNumAttr = row.Attribute("r")?.Value;
+            if (int.TryParse(rowNumAttr, out var rowNumber))
+            {
+                // Insert empty rows for any gaps
+                while (lastRowNumber + 1 < rowNumber)
+                {
+                    rows.Add(new List<ExcelCell>());
+                    lastRowNumber++;
+                }
+                lastRowNumber = rowNumber;
+            }
+            else
+            {
+                lastRowNumber++;
+            }
+
             var cells = new List<ExcelCell>();
             var lastColIndex = 0;
 

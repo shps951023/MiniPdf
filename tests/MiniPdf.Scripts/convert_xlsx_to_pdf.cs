@@ -1,6 +1,6 @@
 #:project ../../src/MiniPdf/MiniPdf.csproj
 
-using MiniPdf;
+using Mp = MiniPdf.MiniPdf;
 
 // Resolve directories relative to this script file
 var scriptDir = Path.GetDirectoryName(AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar));
@@ -42,7 +42,7 @@ foreach (var xlsxPath in xlsxFiles)
 
     try
     {
-        MiniPdf.ConvertToPdf(xlsxPath, pdfPath);
+        Mp.ConvertToPdf(xlsxPath, pdfPath);
         var pdfSize = new FileInfo(pdfPath).Length;
         Console.WriteLine($"  OK  {name}.pdf ({pdfSize / 1024.0:F1} KB)");
         passed++;
